@@ -1,17 +1,17 @@
 {
-    "name": ":vendor_slug/:package_slug",
-    "description": ":package_description",
+    "name": "ethanbarlo/laravel-js-translations",
+    "description": "This is my package laravel-js-translations",
     "keywords": [
-        ":vendor_name",
+        "EthanBarlo",
         "laravel",
-        ":package_slug"
+        "laravel-js-translations"
     ],
-    "homepage": "https://github.com/:vendor_slug/:package_slug",
+    "homepage": "https://github.com/ethanbarlo/laravel-js-translations",
     "license": "MIT",
     "authors": [
         {
-            "name": ":author_name",
-            "email": "author@domain.com",
+            "name": "EthanBarlo",
+            "email": "ethanbar266@gmail.com",
             "role": "Developer"
         }
     ],
@@ -35,13 +35,13 @@
     },
     "autoload": {
         "psr-4": {
-            "VendorName\\Skeleton\\": "src/",
-            "VendorName\\Skeleton\\Database\\Factories\\": "database/factories/"
+            "EthanBarlo\\JsTranslations\\": "src/",
+            "EthanBarlo\\JsTranslations\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "VendorName\\Skeleton\\Tests\\": "tests/",
+            "EthanBarlo\\JsTranslations\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -63,10 +63,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "VendorName\\Skeleton\\SkeletonServiceProvider"
+                "EthanBarlo\\JsTranslations\\JsTranslationsServiceProvider"
             ],
             "aliases": {
-                "Skeleton": "VendorName\\Skeleton\\Facades\\Skeleton"
+                "JsTranslations": "EthanBarlo\\JsTranslations\\Facades\\JsTranslations"
             }
         }
     },
