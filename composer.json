@@ -1,10 +1,12 @@
 {
     "name": "ethanbarlo/laravel-js-translations",
-    "description": "This is my package laravel-js-translations",
+    "description": "Use Laravel translations in JavaScript",
     "keywords": [
-        "EthanBarlo",
         "laravel",
-        "laravel-js-translations"
+        "translations",
+        "i18n",
+        "javascript",
+        "vite"
     ],
     "homepage": "https://github.com/ethanbarlo/laravel-js-translations",
     "license": "MIT",
@@ -35,8 +37,7 @@
     },
     "autoload": {
         "psr-4": {
-            "EthanBarlo\\JsTranslations\\": "src/",
-            "EthanBarlo\\JsTranslations\\Database\\Factories\\": "database/factories/"
+            "EthanBarlo\\JsTranslations\\": "src/"
         }
     },
     "autoload-dev": {
