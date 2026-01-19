@@ -51,8 +51,9 @@ interface LaravelTranslationsOptions {
  *
  * Features:
  * - Exports translations on dev server start
- * - Watches lang directory for changes and re-exports
+ * - Watches lang directory for changes and re-exports (using chokidar for cross-platform support)
  * - Exports translations before production build
+ * - Provides virtual module for auto-initialization
  */
 declare function laravelTranslations(userOptions?: LaravelTranslationsOptions): Plugin;
 

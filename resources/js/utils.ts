@@ -105,10 +105,11 @@ export function choosePluralForm(translationString: string, count: number): stri
     );
 
     if (!hasIntervals) {
-        // Simple pluralization: first segment for count === 1, second for count > 1
+        // Simple pluralization: first segment for count === 1, second for count !== 1
+        // This matches Laravel's trans_choice behavior where 0 uses plural form
         if (count === 1 && segments.length > 0) {
             return segments[0].value;
-        } else if (count > 1 && segments.length > 1) {
+        } else if (segments.length > 1) {
             return segments[1].value;
         } else if (segments.length > 0) {
             return segments[0].value; // fallback to first segment

@@ -37,7 +37,7 @@ class JsTranslationsServiceProvider extends PackageServiceProvider
                 \$locale = app()->getLocale();
                 \$defaultLocale = config('js-translations.default_locale', 'en');
                 if (\$locale !== \$defaultLocale) {
-                    \$path = 'resources/js/translations/generated/' . \$locale . '.json';
+                    \$path = \\EthanBarlo\\JsTranslations\\JsTranslations::getViteAssetPath(\$locale);
                     echo '<link rel=\"modulepreload\" href=\"' . e(\\Illuminate\\Support\\Facades\\Vite::asset(\$path)) . '\" />';
                 }
             ?>";

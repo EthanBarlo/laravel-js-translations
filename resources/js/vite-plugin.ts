@@ -18,9 +18,12 @@
  */
 
 import { execSync } from 'node:child_process';
-import { existsSync, watch, type FSWatcher, type WatchEventType } from 'node:fs';
-import { resolve, join } from 'node:path';
-import type { Plugin, ViteDevServer } from 'vite';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve, join, relative } from 'node:path';
+import type { Plugin, ViteDevServer, ResolvedConfig } from 'vite';
+
+const VIRTUAL_MODULE_ID = 'virtual:laravel-translations';
+const RESOLVED_VIRTUAL_MODULE_ID = '\0' + VIRTUAL_MODULE_ID;
 
 export interface LaravelTranslationsOptions {
     /**
@@ -52,6 +55,13 @@ export interface LaravelTranslationsOptions {
      * @default true
      */
     watch?: boolean;
+}
+
+/**
+ * Escape special characters for use in a regular expression.
+ */
+function escapeRegExp(string: string): string {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
@@ -98,8 +108,9 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number):
  *
  * Features:
  * - Exports translations on dev server start
- * - Watches lang directory for changes and re-exports
+ * - Watches lang directory for changes and re-exports (using chokidar for cross-platform support)
  * - Exports translations before production build
+ * - Provides virtual module for auto-initialization
  */
 export function laravelTranslations(userOptions: LaravelTranslationsOptions = {}): Plugin {
     const options: Required<LaravelTranslationsOptions> = {
@@ -111,14 +122,63 @@ export function laravelTranslations(userOptions: LaravelTranslationsOptions = {}
     };
 
     let root: string;
-    let watcher: FSWatcher | null = null;
+    let config: ResolvedConfig;
 
     return {
         name: 'laravel-js-translations',
         enforce: 'pre',
 
-        configResolved(config) {
-            root = config.root;
+        configResolved(resolvedConfig) {
+            root = resolvedConfig.root;
+            config = resolvedConfig;
+        },
+
+        /**
+         * Resolve the virtual module ID.
+         */
+        resolveId(id) {
+            if (id === VIRTUAL_MODULE_ID) {
+                return RESOLVED_VIRTUAL_MODULE_ID;
+            }
+        },
+
+        /**
+         * Load the virtual module with auto-initialization.
+         */
+        load(id) {
+            if (id === RESOLVED_VIRTUAL_MODULE_ID) {
+                // Generate the virtual module that auto-initializes translations
+                // Use absolute path from root for the import
+                const outputPathFromRoot = '/' + options.outputPath;
+
+                return `
+// Auto-generated virtual module for Laravel JS Translations
+import defaultTranslations from '${outputPathFromRoot}/${options.defaultLocale}.json';
+import { initTranslations } from 'laravel-js-translations';
+
+// Auto-initialize with default translations
+initTranslations(defaultTranslations, '${options.defaultLocale}');
+
+// Re-export everything from the main module
+export * from 'laravel-js-translations';
+`;
+            }
+        },
+
+        /**
+         * Transform manager.ts to use the configured output path.
+         */
+        transform(code, id) {
+            // Transform the hardcoded output path in the manager module
+            if (id.includes('/manager.') && (id.endsWith('.ts') || id.endsWith('.js'))) {
+                const defaultPath = '/resources/js/translations/generated';
+                const configuredPath = '/' + options.outputPath;
+
+                if (code.includes(defaultPath) && defaultPath !== configuredPath) {
+                    return code.replace(new RegExp(escapeRegExp(defaultPath), 'g'), configuredPath);
+                }
+            }
+            return null;
         },
 
         /**
@@ -128,7 +188,8 @@ export function laravelTranslations(userOptions: LaravelTranslationsOptions = {}
             // Export translations on server start
             exportTranslations(options, root);
 
-            // Watch lang directory for changes
+            // Watch lang directory for changes using Vite's watcher (chokidar-based)
+            // This is more reliable across platforms than fs.watch
             if (options.watch) {
                 const langPath = resolve(root, options.langPath);
 
@@ -142,19 +203,22 @@ export function laravelTranslations(userOptions: LaravelTranslationsOptions = {}
                         server.watcher.emit('change', join(outputPath, `${options.defaultLocale}.json`));
                     }, 300);
 
-                    watcher = watch(
-                        langPath,
-                        { recursive: true },
-                        (eventType: WatchEventType, filename: string | null) => {
-                            if (filename && (filename.endsWith('.php') || filename.endsWith('.json'))) {
-                                debouncedExport();
-                            }
+                    // Use Vite's built-in watcher which is chokidar-based and works reliably on Linux
+                    server.watcher.add(langPath);
+                    server.watcher.on('change', (filePath) => {
+                        if (filePath.startsWith(langPath) && (filePath.endsWith('.php') || filePath.endsWith('.json'))) {
+                            debouncedExport();
                         }
-                    );
-
-                    // Clean up watcher on server close
-                    server.httpServer?.on('close', () => {
-                        watcher?.close();
+                    });
+                    server.watcher.on('add', (filePath) => {
+                        if (filePath.startsWith(langPath) && (filePath.endsWith('.php') || filePath.endsWith('.json'))) {
+                            debouncedExport();
+                        }
+                    });
+                    server.watcher.on('unlink', (filePath) => {
+                        if (filePath.startsWith(langPath) && (filePath.endsWith('.php') || filePath.endsWith('.json'))) {
+                            debouncedExport();
+                        }
                     });
                 }
             }
@@ -165,14 +229,6 @@ export function laravelTranslations(userOptions: LaravelTranslationsOptions = {}
          */
         buildStart() {
             exportTranslations(options, root);
-        },
-
-        /**
-         * Clean up watcher on build end.
-         */
-        buildEnd() {
-            watcher?.close();
-            watcher = null;
         },
     };
 }

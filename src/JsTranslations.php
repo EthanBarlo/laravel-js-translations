@@ -96,6 +96,10 @@ class JsTranslations
      */
     public static function getViteAssetPath(string $locale): string
     {
-        return 'resources/js/translations/generated/'.$locale.'.json';
+        // Get output path relative to base_path for Vite asset resolution
+        $outputPath = config('js-translations.output_path', resource_path('js/translations/generated'));
+        $relativePath = ltrim(str_replace(base_path(), '', $outputPath), '/\\');
+
+        return $relativePath.'/'.$locale.'.json';
     }
 }

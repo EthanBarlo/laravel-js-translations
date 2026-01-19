@@ -35,15 +35,44 @@ const translationModules = import.meta.glob<TranslationData>(
 );
 
 /**
+ * Get the base locale from a full locale string (e.g., 'en-US' -> 'en').
+ */
+const getBaseLocale = (locale: string): string => {
+    return locale.split('-')[0].split('_')[0];
+};
+
+/**
+ * Check if two locales are equivalent (same locale or same base locale).
+ * e.g., 'en' and 'en-US' are considered equivalent.
+ */
+const localesAreEquivalent = (locale1: string, locale2: string): boolean => {
+    if (locale1 === locale2) {
+        return true;
+    }
+    return getBaseLocale(locale1) === getBaseLocale(locale2);
+};
+
+/**
  * Load a translation module for a specific locale asynchronously.
+ * Tries to load the exact locale first, then falls back to the base locale.
  */
 const loadLocale = async (locale: string): Promise<TranslationData> => {
     if (!locale) {
         return {};
     }
 
+    // Try exact locale first (e.g., 'en-US')
     const modulePath = `/resources/js/translations/generated/${locale}.json`;
-    const modLoader = translationModules[modulePath];
+    let modLoader = translationModules[modulePath];
+
+    // If exact locale not found, try base locale (e.g., 'en')
+    if (!modLoader) {
+        const baseLocale = getBaseLocale(locale);
+        if (baseLocale !== locale) {
+            const baseModulePath = `/resources/js/translations/generated/${baseLocale}.json`;
+            modLoader = translationModules[baseModulePath];
+        }
+    }
 
     if (!modLoader) {
         if (import.meta.env.DEV) {
@@ -61,6 +90,7 @@ const loadLocale = async (locale: string): Promise<TranslationData> => {
 
 /**
  * Get the current locale from the document's lang attribute.
+ * Preserves the full locale including region code (e.g., 'en-US').
  */
 const getCurrentLocale = (): string => {
     if (typeof document === 'undefined') {
@@ -72,8 +102,8 @@ const getCurrentLocale = (): string => {
         return getDefaultLocale();
     }
 
-    // Convert locale format (e.g., 'en-US' -> 'en', 'es-ES' -> 'es')
-    return lang.split('-')[0];
+    // Preserve the full locale string - fallback to base locale is handled by loadLocale
+    return lang;
 };
 
 /**
@@ -181,6 +211,7 @@ class TranslationManager {
      */
     private async loadTranslations(): Promise<void> {
         // If current locale is default or not set, use default only
+        // Also handle equivalent locales (e.g., 'en' vs 'en-US' when only 'en' exists)
         if (!this.currentLocale || this.currentLocale === this.defaultLocale) {
             this.translations = { ...this.defaultTranslations };
             this.notifyObservers();

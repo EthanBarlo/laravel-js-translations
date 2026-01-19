@@ -3,12 +3,22 @@ var translationModules = import.meta.glob(
   "/resources/js/translations/generated/*.json",
   { eager: false }
 );
+var getBaseLocale = (locale) => {
+  return locale.split("-")[0].split("_")[0];
+};
 var loadLocale = async (locale) => {
   if (!locale) {
     return {};
   }
   const modulePath = `/resources/js/translations/generated/${locale}.json`;
-  const modLoader = translationModules[modulePath];
+  let modLoader = translationModules[modulePath];
+  if (!modLoader) {
+    const baseLocale = getBaseLocale(locale);
+    if (baseLocale !== locale) {
+      const baseModulePath = `/resources/js/translations/generated/${baseLocale}.json`;
+      modLoader = translationModules[baseModulePath];
+    }
+  }
   if (!modLoader) {
     if (import.meta.env.DEV) {
       console.warn(`[js-translations] Translation file not found for locale: ${locale}`);
@@ -26,7 +36,7 @@ var getCurrentLocale = () => {
   if (!lang) {
     return getDefaultLocale();
   }
-  return lang.split("-")[0];
+  return lang;
 };
 var getDefaultLocale = () => {
   if (typeof document !== "undefined") {
@@ -241,7 +251,7 @@ function choosePluralForm(translationString, count) {
   if (!hasIntervals) {
     if (count === 1 && segments.length > 0) {
       return segments[0].value;
-    } else if (count > 1 && segments.length > 1) {
+    } else if (segments.length > 1) {
       return segments[1].value;
     } else if (segments.length > 0) {
       return segments[0].value;
