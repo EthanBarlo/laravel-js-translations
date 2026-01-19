@@ -5,6 +5,8 @@
  * Follows Laravel's translation conventions.
  */
 
+import { getPluralIndex } from './pluralRules';
+
 export interface PluralSegment {
     value: string;
     min?: number;
@@ -90,41 +92,48 @@ export function countMatchesSegment(count: number, segment: PluralSegment): bool
 }
 
 /**
- * Choose the correct plural form based on count.
+ * Choose the correct plural form based on count and locale.
+ *
+ * This mirrors Laravel's MessageSelector::choose() method:
+ * 1. First, try to extract a form using explicit intervals ({n} or [min,max])
+ * 2. If no intervals match, use locale-specific plural rules
  */
-export function choosePluralForm(translationString: string, count: number): string {
+export function choosePluralForm(
+    translationString: string,
+    count: number,
+    locale: string = 'en'
+): string {
     const segments = parsePluralString(translationString);
 
     if (segments.length === 0) {
         return translationString;
     }
 
-    // For simple "one|many" pluralization (no intervals), handle count === 1 specially
+    // Check if any segment has explicit interval conditions
     const hasIntervals = segments.some(
         (seg) => seg.exact !== undefined || seg.min !== undefined || seg.max !== undefined
     );
 
-    if (!hasIntervals) {
-        // Simple pluralization: first segment for count === 1, second for count !== 1
-        // This matches Laravel's trans_choice behavior where 0 uses plural form
-        if (count === 1 && segments.length > 0) {
-            return segments[0].value;
-        } else if (segments.length > 1) {
-            return segments[1].value;
-        } else if (segments.length > 0) {
-            return segments[0].value; // fallback to first segment
+    // First, try to find a matching interval condition
+    if (hasIntervals) {
+        for (const segment of segments) {
+            if (countMatchesSegment(count, segment)) {
+                return segment.value;
+            }
         }
     }
 
-    // Find the first segment that matches the count (for interval-based pluralization)
-    for (const segment of segments) {
-        if (countMatchesSegment(count, segment)) {
-            return segment.value;
-        }
+    // For simple pluralization (no intervals or no interval matched),
+    // use locale-specific plural rules (matching Laravel's behavior)
+    const strippedSegments = segments.map((seg) => seg.value);
+    const pluralIndex = getPluralIndex(locale, count);
+
+    // If we have only one segment or the plural index is out of bounds, return the first
+    if (strippedSegments.length === 1 || pluralIndex >= strippedSegments.length) {
+        return strippedSegments[0];
     }
 
-    // Fallback: if no segments match, use the last segment
-    return segments[segments.length - 1].value;
+    return strippedSegments[pluralIndex];
 }
 
 /**
@@ -134,6 +143,8 @@ export function choosePluralForm(translationString: string, count: number): stri
  * - :name → lowercase
  * - :Name → ucfirst
  * - :NAME → uppercase
+ *
+ * Replacement keys are matched case-insensitively (matching Laravel behavior).
  */
 export function applyReplacements(
     template: string,
@@ -143,8 +154,14 @@ export function applyReplacements(
         return template;
     }
 
+    // Normalize replacement keys to lowercase for case-insensitive matching (Laravel behavior)
+    const normalizedReplacements: ReplacementValues = {};
+    for (const [key, value] of Object.entries(replacements)) {
+        normalizedReplacements[key.toLowerCase()] = value;
+    }
+
     return template.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (match, key) => {
-        const value = replacements[key.toLowerCase()];
+        const value = normalizedReplacements[key.toLowerCase()];
 
         if (value === null || value === undefined) {
             return match; // Keep the placeholder if no replacement provided

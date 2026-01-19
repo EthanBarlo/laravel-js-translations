@@ -1,0 +1,6 @@
+{
+    "Hello World": "Hello World",
+    "messages.welcome": "Welcome (from JSON), :name!",
+    "Only in JSON": "This key only exists in JSON",
+    "Special characters: <>&\"'": "Special: <>&\"'"
+}

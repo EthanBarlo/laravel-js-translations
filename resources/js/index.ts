@@ -22,6 +22,7 @@ export type { TranslationData, TranslationObserver, ReplacementValues, ITranslat
 
 // Re-export utilities for advanced usage
 export { applyReplacements, choosePluralForm } from './utils';
+export { getPluralIndex } from './pluralRules';
 export { translationManager } from './manager';
 
 /**
@@ -125,8 +126,9 @@ export function trans_choice(
     // Add count to replacements by default
     const replacementsWithCount = { ...replacements, count };
 
-    // Choose the correct plural form
-    const chosenForm = choosePluralForm(translation, count);
+    // Choose the correct plural form using locale-specific rules
+    const locale = translationManager.getCurrentLocale();
+    const chosenForm = choosePluralForm(translation, count, locale);
 
     return applyReplacements(chosenForm, replacementsWithCount);
 }
