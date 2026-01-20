@@ -14,7 +14,13 @@
  * This is an exact port of Laravel's MessageSelector::getPluralIndex() method.
  */
 export function getPluralIndex(locale: string, number: number): number {
-    switch (locale) {
+    const normalizedLocale = locale.replace(/-/g, '_');
+
+    if (normalizedLocale !== locale) {
+        return getPluralIndex(normalizedLocale, number);
+    }
+
+    switch (normalizedLocale) {
         case 'az':
         case 'az_AZ':
         case 'bo':
@@ -377,7 +383,14 @@ export function getPluralIndex(locale: string, number: number): number {
                         ? 4
                         : 5;
 
-        default:
+        default: {
+            // Fall back to base locale when a region-specific variant is unknown.
+            const baseLocale = normalizedLocale.split('_')[0];
+            if (baseLocale && baseLocale !== normalizedLocale) {
+                return getPluralIndex(baseLocale, number);
+            }
+
             return 0;
+        }
     }
 }

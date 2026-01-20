@@ -57,7 +57,27 @@ describe('getPluralIndex - locale-specific plural rules', () => {
     });
 
     describe('Category 2: Two forms - singular at 1 (English-like)', () => {
-        const locales = ['en', 'en_US', 'en_GB', 'de', 'de_DE', 'es', 'es_ES', 'it', 'it_IT', 'pt', 'pt_BR', 'nl', 'nl_NL', 'sv', 'sv_SE'];
+        const locales = [
+            'en',
+            'en_US',
+            'en_GB',
+            'en-US',
+            'en-CA',
+            'de',
+            'de_DE',
+            'es',
+            'es_ES',
+            'es-MX',
+            'it',
+            'it_IT',
+            'pt',
+            'pt_BR',
+            'pt-BR',
+            'nl',
+            'nl_NL',
+            'sv',
+            'sv_SE',
+        ];
 
         locales.forEach((locale) => {
             it(`${locale}: returns 0 for 1, returns 1 for other numbers`, () => {
@@ -72,7 +92,7 @@ describe('getPluralIndex - locale-specific plural rules', () => {
     });
 
     describe('Category 3: Two forms - singular at 0 and 1 (French-like)', () => {
-        const locales = ['fr', 'fr_FR', 'fr_CA', 'fr_BE', 'hi', 'hi_IN', 'am', 'am_ET'];
+        const locales = ['fr', 'fr_FR', 'fr_CA', 'fr_BE', 'fr-CA', 'hi', 'hi_IN', 'am', 'am_ET'];
 
         locales.forEach((locale) => {
             it(`${locale}: returns 0 for 0 or 1, returns 1 for other numbers`, () => {

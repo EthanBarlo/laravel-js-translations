@@ -26,9 +26,13 @@ declare const translationManager: ITranslationManager;
 
 type ReplacementValues = Record<string, string | number | null | undefined>;
 /**
- * Choose the correct plural form based on count.
+ * Choose the correct plural form based on count and locale.
+ *
+ * This mirrors Laravel's MessageSelector::choose() method:
+ * 1. First, try to extract a form using explicit intervals ({n} or [min,max])
+ * 2. If no intervals match, use locale-specific plural rules
  */
-declare function choosePluralForm(translationString: string, count: number): string;
+declare function choosePluralForm(translationString: string, count: number, locale?: string): string;
 /**
  * Apply replacements to a translation string.
  *
@@ -36,8 +40,26 @@ declare function choosePluralForm(translationString: string, count: number): str
  * - :name → lowercase
  * - :Name → ucfirst
  * - :NAME → uppercase
+ *
+ * Replacement keys are matched case-insensitively (matching Laravel behavior).
  */
 declare function applyReplacements(template: string, replacements?: ReplacementValues): string;
+
+/**
+ * Locale-specific plural rules ported from Laravel's MessageSelector.
+ *
+ * The plural rules are derived from code of the Zend Framework (2010-09-25), which
+ * is subject to the new BSD license (https://framework.zend.com/license)
+ * Copyright (c) 2005-2010 - Zend Technologies USA Inc. (http://www.zend.com)
+ *
+ * @see https://github.com/laravel/framework/blob/master/src/Illuminate/Translation/MessageSelector.php
+ */
+/**
+ * Get the index to use for pluralization based on locale and count.
+ *
+ * This is an exact port of Laravel's MessageSelector::getPluralIndex() method.
+ */
+declare function getPluralIndex(locale: string, number: number): number;
 
 /**
  * Laravel JS Translations
@@ -158,4 +180,4 @@ declare function getLocale(): string;
  */
 declare function hasTranslation(key: string): boolean;
 
-export { type ITranslationManager, type ReplacementValues, type TranslationData, type TranslationObserver, __, applyReplacements, choosePluralForm, getLocale, getTranslationManager, hasTranslation, initTranslations, onTranslationsChange, trans_choice, translationManager, translationsReady };
+export { type ITranslationManager, type ReplacementValues, type TranslationData, type TranslationObserver, __, applyReplacements, choosePluralForm, getLocale, getPluralIndex, getTranslationManager, hasTranslation, initTranslations, onTranslationsChange, trans_choice, translationManager, translationsReady };

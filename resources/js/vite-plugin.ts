@@ -18,8 +18,8 @@
  */
 
 import { execSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve, join, relative } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { resolve, join } from 'node:path';
 import type { Plugin, ViteDevServer, ResolvedConfig } from 'vite';
 
 const VIRTUAL_MODULE_ID = 'virtual:laravel-translations';
@@ -104,6 +104,20 @@ function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number):
 }
 
 /**
+ * Trigger HMR for all generated translation JSON files.
+ */
+function emitTranslationChanges(server: ViteDevServer, outputPath: string): void {
+    if (!existsSync(outputPath)) {
+        return;
+    }
+
+    const files = readdirSync(outputPath).filter((file) => file.endsWith('.json'));
+    for (const file of files) {
+        server.watcher.emit('change', join(outputPath, file));
+    }
+}
+
+/**
  * Vite plugin for Laravel JS Translations.
  *
  * Features:
@@ -150,17 +164,18 @@ export function laravelTranslations(userOptions: LaravelTranslationsOptions = {}
                 // Generate the virtual module that auto-initializes translations
                 // Use absolute path from root for the import
                 const outputPathFromRoot = '/' + options.outputPath;
+                const packageEntry = '/vendor/ethanbarlo/laravel-js-translations/dist/index.js';
 
                 return `
 // Auto-generated virtual module for Laravel JS Translations
 import defaultTranslations from '${outputPathFromRoot}/${options.defaultLocale}.json';
-import { initTranslations } from 'laravel-js-translations';
+import { initTranslations } from '${packageEntry}';
 
 // Auto-initialize with default translations
 initTranslations(defaultTranslations, '${options.defaultLocale}');
 
 // Re-export everything from the main module
-export * from 'laravel-js-translations';
+export * from '${packageEntry}';
 `;
             }
         },
@@ -170,13 +185,16 @@ export * from 'laravel-js-translations';
          */
         transform(code, id) {
             // Transform the hardcoded output path in the manager module
-            if (id.includes('/manager.') && (id.endsWith('.ts') || id.endsWith('.js'))) {
-                const defaultPath = '/resources/js/translations/generated';
-                const configuredPath = '/' + options.outputPath;
+            const defaultPath = '/resources/js/translations/generated';
+            const configuredPath = '/' + options.outputPath;
 
-                if (code.includes(defaultPath) && defaultPath !== configuredPath) {
-                    return code.replace(new RegExp(escapeRegExp(defaultPath), 'g'), configuredPath);
-                }
+            const isTranslationsModule =
+                id.includes('laravel-js-translations') ||
+                id.includes('/vendor/ethanbarlo/laravel-js-translations/') ||
+                id.includes('/resources/js/manager.');
+
+            if (isTranslationsModule && code.includes(defaultPath) && defaultPath !== configuredPath) {
+                return code.replace(new RegExp(escapeRegExp(defaultPath), 'g'), configuredPath);
             }
             return null;
         },
@@ -200,7 +218,7 @@ export * from 'laravel-js-translations';
 
                         // Trigger HMR for translation files
                         const outputPath = resolve(root, options.outputPath);
-                        server.watcher.emit('change', join(outputPath, `${options.defaultLocale}.json`));
+                        emitTranslationChanges(server, outputPath);
                     }, 300);
 
                     // Use Vite's built-in watcher which is chokidar-based and works reliably on Linux
